@@ -25,8 +25,8 @@ git push -u origin main
 ## 3. Deploy on Vercel
 1. Go back to your Vercel "New Project" screen (the one you already had open) and import the repo again — it will work now that it has code.
 2. Under **Environment Variables**, make sure these are set (you already had them filled in):
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_SUPABASE_URL`
+   - `NEXT_SUPABASE_ANON_KEY`
 3. Click **Deploy**.
 
 ## 4. Test it
