@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: 'https://jfvsvhpjlidwevwuzcui.supabase.co',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpmdnN2aHBqbGlkd2V2d3V6Y3VpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNTkxMjUsImV4cCI6MjEwNTczNTEyNX0.yVyrgSViD11nRxBHLFKmmTRHN7eMUZSl8Vlf8ZEapeQ',
+  },
 };
 
 module.exports = nextConfig;
