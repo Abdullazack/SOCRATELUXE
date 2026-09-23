@@ -10,9 +10,11 @@ export default function AdminDashboard() {
   const [session, setSession] = useState(null);
   const [checking, setChecking] = useState(true);
   const [products, setProducts] = useState([]);
+  const [imagesByProduct, setImagesByProduct] = useState({});
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
+  const [uploadingVideoId, setUploadingVideoId] = useState(null);
   const [newProduct, setNewProduct] = useState({
     name: '', price: '', category: CATEGORIES[0], description: '',
   });
@@ -38,6 +40,19 @@ export default function AdminDashboard() {
     setLoading(true);
     const { data, error } = await supabase.from('products').select('*').order('id');
     if (!error) setProducts(data || []);
+
+    const { data: imgs, error: imgErr } = await supabase
+      .from('product_images')
+      .select('*')
+      .order('position');
+    if (!imgErr && imgs) {
+      const grouped = {};
+      imgs.forEach((img) => {
+        if (!grouped[img.product_id]) grouped[img.product_id] = [];
+        grouped[img.product_id].push(img);
+      });
+      setImagesByProduct(grouped);
+    }
     setLoading(false);
   };
 
@@ -79,28 +94,70 @@ export default function AdminDashboard() {
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const uploadImage = async (product, file) => {
-    if (!file) return;
+  const uploadImages = async (product, fileList) => {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
     setUploadingId(product.id);
+    const existing = imagesByProduct[product.id] || [];
+    let position = existing.length;
+
+    for (const file of files) {
+      const ext = file.name.split('.').pop();
+      const path = `${product.id}-${Date.now()}-${position}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(path, file, { upsert: true });
+      if (uploadError) {
+        alert(`Upload failed for ${file.name}: ` + uploadError.message);
+        continue;
+      }
+      const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(path);
+      const { data: inserted, error: insertError } = await supabase
+        .from('product_images')
+        .insert({ product_id: product.id, url: urlData.publicUrl, position })
+        .select();
+      if (!insertError && inserted) {
+        setImagesByProduct((prev) => ({
+          ...prev,
+          [product.id]: [...(prev[product.id] || []), inserted[0]],
+        }));
+      }
+      position += 1;
+    }
+    setUploadingId(null);
+  };
+
+  const deleteImage = async (productId, image) => {
+    if (!confirm('Remove this image?')) return;
+    const { error } = await supabase.from('product_images').delete().eq('id', image.id);
+    if (error) { alert('Delete failed: ' + error.message); return; }
+    setImagesByProduct((prev) => ({
+      ...prev,
+      [productId]: (prev[productId] || []).filter((img) => img.id !== image.id),
+    }));
+  };
+
+  const uploadVideo = async (product, file) => {
+    if (!file) return;
+    setUploadingVideoId(product.id);
     const ext = file.name.split('.').pop();
     const path = `${product.id}-${Date.now()}.${ext}`;
     const { error: uploadError } = await supabase.storage
-      .from('product-images')
+      .from('product-videos')
       .upload(path, file, { upsert: true });
     if (uploadError) {
-      alert('Upload failed: ' + uploadError.message);
-      setUploadingId(null);
+      alert('Video upload failed: ' + uploadError.message);
+      setUploadingVideoId(null);
       return;
     }
-    const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(path);
-    const publicUrl = urlData.publicUrl;
+    const { data: urlData } = supabase.storage.from('product-videos').getPublicUrl(path);
     const { error: updateError } = await supabase
       .from('products')
-      .update({ image_url: publicUrl })
+      .update({ video_url: urlData.publicUrl })
       .eq('id', product.id);
-    setUploadingId(null);
-    if (updateError) { alert('Save image failed: ' + updateError.message); return; }
-    updateField(product.id, 'image_url', publicUrl);
+    setUploadingVideoId(null);
+    if (updateError) { alert('Save video failed: ' + updateError.message); return; }
+    updateField(product.id, 'video_url', urlData.publicUrl);
   };
 
   const createProduct = async () => {
@@ -126,7 +183,7 @@ export default function AdminDashboard() {
   if (!session) return null;
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
+    <div style={{ maxWidth: 1000, margin: '0 auto', padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1>Admin Dashboard</h1>
         <div>
@@ -139,8 +196,8 @@ export default function AdminDashboard() {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 32, border: '1px solid #ccc', padding: 12, borderRadius: 8 }}>
         <input placeholder="Name" value={newProduct.name}
           onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} />
-        <input placeholder="Price" type="number" value={newProduct.price}
-          onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} style={{ width: 100 }} />
+        <input placeholder="Price (Rwf)" type="number" value={newProduct.price}
+          onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} style={{ width: 120 }} />
         <select value={newProduct.category}
           onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}>
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -154,51 +211,89 @@ export default function AdminDashboard() {
 
       <h3>Products ({products.length})</h3>
       {loading ? <p>Loading…</p> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {products.map((p) => (
-            <div key={p.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12, display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <div>
-                {p.image_url
-                  ? <img src={p.image_url} alt={p.name} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6 }} />
-                  : <div style={{ width: 80, height: 80, background: '#eee', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>No image</div>}
-                <input type="file" accept="image/*" style={{ marginTop: 6, fontSize: 11 }}
-                  disabled={uploadingId === p.id}
-                  onChange={(e) => uploadImage(p, e.target.files[0])} />
-                {uploadingId === p.id && <p style={{ fontSize: 11 }}>Uploading…</p>}
-              </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {products.map((p) => {
+            const images = imagesByProduct[p.id] || [];
+            const imageCountOk = images.length >= 3;
+            return (
+              <div key={p.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12 }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <input value={p.name} onChange={(e) => updateField(p.id, 'name', e.target.value)} />
+                    <textarea value={p.description || ''} onChange={(e) => updateField(p.id, 'description', e.target.value)} rows={2} />
+                    <select value={p.category} onChange={(e) => updateField(p.id, 'category', e.target.value)}>
+                      {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
 
-              <div style={{ flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <input value={p.name} onChange={(e) => updateField(p.id, 'name', e.target.value)} />
-                <textarea value={p.description || ''} onChange={(e) => updateField(p.id, 'description', e.target.value)} rows={2} />
-                <select value={p.category} onChange={(e) => updateField(p.id, 'category', e.target.value)}>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 140 }}>
+                    <label style={{ fontSize: 12 }}>Price (Rwf)</label>
+                    <input type="number" value={p.price} onChange={(e) => updateField(p.id, 'price', e.target.value)} />
+                    <label style={{ fontSize: 12 }}>Discount (%)</label>
+                    <input type="number" min="0" max="100" value={p.discount_percent || 0}
+                      onChange={(e) => updateField(p.id, 'discount_percent', e.target.value)} />
+                    <label style={{ fontSize: 12 }}>
+                      <input type="checkbox" checked={!!p.trending}
+                        onChange={(e) => updateField(p.id, 'trending', e.target.checked)} /> Trending
+                    </label>
+                    <label style={{ fontSize: 12 }}>
+                      <input type="checkbox" checked={!!p.active}
+                        onChange={(e) => updateField(p.id, 'active', e.target.checked)} /> Active (visible on site)
+                    </label>
+                  </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 140 }}>
-                <label style={{ fontSize: 12 }}>Price ($)</label>
-                <input type="number" value={p.price} onChange={(e) => updateField(p.id, 'price', e.target.value)} />
-                <label style={{ fontSize: 12 }}>Discount (%)</label>
-                <input type="number" min="0" max="100" value={p.discount_percent || 0}
-                  onChange={(e) => updateField(p.id, 'discount_percent', e.target.value)} />
-                <label style={{ fontSize: 12 }}>
-                  <input type="checkbox" checked={!!p.trending}
-                    onChange={(e) => updateField(p.id, 'trending', e.target.checked)} /> Trending
-                </label>
-                <label style={{ fontSize: 12 }}>
-                  <input type="checkbox" checked={!!p.active}
-                    onChange={(e) => updateField(p.id, 'active', e.target.checked)} /> Active (visible on site)
-                </label>
-              </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <button onClick={() => saveProduct(p)} disabled={savingId === p.id}>
+                      {savingId === p.id ? 'Saving…' : 'Save'}
+                    </button>
+                    <button onClick={() => deleteProduct(p.id)} style={{ color: 'red' }}>Delete</button>
+                  </div>
+                </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <button onClick={() => saveProduct(p)} disabled={savingId === p.id}>
-                  {savingId === p.id ? 'Saving…' : 'Save'}
-                </button>
-                <button onClick={() => deleteProduct(p.id)} style={{ color: 'red' }}>Delete</button>
+                <div style={{ marginTop: 12, borderTop: '1px solid #eee', paddingTop: 12 }}>
+                  <p style={{ fontSize: 13, fontWeight: 'bold', color: imageCountOk ? 'green' : '#b45309' }}>
+                    Images: {images.length} {imageCountOk ? '✓' : '— needs at least 3'}
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                    {images.map((img) => (
+                      <div key={img.id} style={{ position: 'relative' }}>
+                        <img src={img.url} alt="" style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 6 }} />
+                        <button
+                          onClick={() => deleteImage(p.id, img)}
+                          style={{
+                            position: 'absolute', top: -6, right: -6, background: '#c00', color: '#fff',
+                            border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', fontSize: 12,
+                          }}
+                        >×</button>
+                      </div>
+                    ))}
+                  </div>
+                  <input
+                    type="file" accept="image/*" multiple
+                    disabled={uploadingId === p.id}
+                    onChange={(e) => uploadImages(p, e.target.files)}
+                  />
+                  {uploadingId === p.id && <span style={{ fontSize: 12, marginLeft: 8 }}>Uploading…</span>}
+                </div>
+
+                <div style={{ marginTop: 12, borderTop: '1px solid #eee', paddingTop: 12 }}>
+                  <p style={{ fontSize: 13, fontWeight: 'bold' }}>
+                    Video (~5s): {p.video_url ? '✓ uploaded' : '— none yet'}
+                  </p>
+                  {p.video_url && (
+                    <video src={p.video_url} controls style={{ width: 160, borderRadius: 6, marginBottom: 8 }} />
+                  )}
+                  <br />
+                  <input
+                    type="file" accept="video/*"
+                    disabled={uploadingVideoId === p.id}
+                    onChange={(e) => uploadVideo(p, e.target.files[0])}
+                  />
+                  {uploadingVideoId === p.id && <span style={{ fontSize: 12, marginLeft: 8 }}>Uploading…</span>}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
