@@ -11,6 +11,39 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [logoUrl, setLogoUrl] = useState(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  useEffect(() => {
+    if (!session) return;
+    supabase.from('settings').select('*').eq('key', 'branding').single().then(({ data, error }) => {
+      if (!error && data) setLogoUrl(data.value.logo_url);
+    });
+  }, [session]);
+
+  const uploadLogo = async (file) => {
+    if (!file) return;
+    setUploadingLogo(true);
+    const ext = file.name.split('.').pop();
+    const path = `logo-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from('site-assets')
+      .upload(path, file, { upsert: true });
+    if (uploadError) {
+      alert('Logo upload failed: ' + uploadError.message);
+      setUploadingLogo(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('site-assets').getPublicUrl(path);
+    const { error: updateError } = await supabase
+      .from('settings')
+      .update({ value: { logo_url: urlData.publicUrl }, updated_at: new Date().toISOString() })
+      .eq('key', 'branding');
+    setUploadingLogo(false);
+    if (updateError) { alert('Save failed: ' + updateError.message); return; }
+    setLogoUrl(urlData.publicUrl);
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) {
@@ -78,6 +111,22 @@ export default function AdminSettings() {
       <button onClick={save} disabled={saving} style={{ marginTop: 20, padding: '10px 16px' }}>
         {saving ? 'Saving…' : 'Save settings'}
       </button>
+      
+      <h3 style={{ marginTop: 32 }}>Site Logo</h3>
+      <p style={{ fontSize: 12, color: '#666' }}>
+        Upload your logo — it replaces the text logo in the header and acts as the home button.
+      </p>
+      {logoUrl && (
+        <img src={logoUrl} alt="Current logo" style={{ height: 50, marginBottom: 8, display: 'block' }} />
+      )}
+      <input
+        type="file"
+        accept="image/*"
+        disabled={uploadingLogo}
+        onChange={(e) => uploadLogo(e.target.files[0])}
+      />
+      {uploadingLogo && <span style={{ fontSize: 12, marginLeft: 8 }}>Uploading…</span>}
+
     </div>
   );
 }
