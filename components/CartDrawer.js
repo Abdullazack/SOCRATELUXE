@@ -1,13 +1,22 @@
 import { useCart } from '../lib/CartContext';
 import { useRouter } from 'next/router';
 
+const formatRwf = (amount) => `${Number(amount).toLocaleString('en-US')} Rwf`;
+
 export default function CartDrawer({ open, onClose, products }) {
   const { cart, remove } = useCart();
   const router = useRouter();
 
+  const priceFor = (p) => {
+    const discount = p.discount_percent || 0;
+    return discount ? p.price * (1 - discount / 100) : p.price;
+  };
+
   const lines = Object.keys(cart).map((id) => {
     const p = products.find((p) => String(p.id) === id);
-    return p ? { ...p, qty: cart[id], lineTotal: p.price * cart[id] } : null;
+    if (!p) return null;
+    const unitPrice = priceFor(p);
+    return { ...p, qty: cart[id], lineTotal: unitPrice * cart[id] };
   }).filter(Boolean);
 
   const total = lines.reduce((s, l) => s + l.lineTotal, 0);
@@ -26,14 +35,14 @@ export default function CartDrawer({ open, onClose, products }) {
             <div className="cart-row" key={l.id}>
               <span>{l.name} x{l.qty}</span>
               <span>
-                ${l.lineTotal}{' '}
+                {formatRwf(l.lineTotal)}{' '}
                 <a href="#" onClick={(e) => { e.preventDefault(); remove(l.id); }} style={{ color: 'var(--muted)', marginLeft: 8 }}>✕</a>
               </span>
             </div>
           ))}
         </div>
         <div className="cart-foot">
-          <div className="total"><span>Total</span><span>${total}</span></div>
+          <div className="total"><span>Total</span><span>{formatRwf(total)}</span></div>
           <button
             className="checkout-btn"
             onClick={() => {

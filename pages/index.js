@@ -106,11 +106,8 @@ export default function Home() {
     <>
       <header>
         <a href="/" onClick={goHome} className="logo-link">
-          {logoUrl ? (
-            <img src={logoUrl} alt="Socrateluxe" className="logo-img" />
-          ) : (
-            <h1>SOCRATE<span>LUXE</span></h1>
-          )}
+          {logoUrl && <img src={logoUrl} alt="Socrateluxe" className="logo-img" />}
+          <h1>SOCRATE<span>LUXE</span></h1>
         </a>
         <div className="header-actions">
           <a href="/admin/login" className="admin-btn">Sign in</a>

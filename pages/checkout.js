@@ -3,6 +3,8 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import { useCart } from '../lib/CartContext';
 
+const formatRwf = (amount) => `${Number(amount).toLocaleString('en-US')} Rwf`;
+
 export default function Checkout() {
   const { cart, clear } = useCart();
   const router = useRouter();
@@ -17,9 +19,16 @@ export default function Checkout() {
     supabase.from('products').select('*').then(({ data }) => setProducts(data || []));
   }, []);
 
+  const priceFor = (p) => {
+    const discount = p.discount_percent || 0;
+    return discount ? p.price * (1 - discount / 100) : p.price;
+  };
+
   const lines = Object.keys(cart).map((id) => {
     const p = products.find((p) => String(p.id) === id);
-    return p ? { ...p, qty: cart[id], lineTotal: p.price * cart[id] } : null;
+    if (!p) return null;
+    const unitPrice = priceFor(p);
+    return { ...p, qty: cart[id], lineTotal: unitPrice * cart[id] };
   }).filter(Boolean);
   const total = lines.reduce((s, l) => s + l.lineTotal, 0);
 
@@ -41,7 +50,7 @@ export default function Checkout() {
         body: JSON.stringify({
           buyer,
           paymentMethod: payMethod,
-          lines: lines.map((l) => ({ id: l.id, name: l.name, price: l.price, qty: l.qty })),
+          lines: lines.map((l) => ({ id: l.id, name: l.name, price: l.lineTotal / l.qty, qty: l.qty })),
           total,
         }),
       });
@@ -85,9 +94,9 @@ export default function Checkout() {
         <>
           <h2>Review order</h2>
           {lines.map((l) => (
-            <div className="summary-row" key={l.id}><span>{l.name} x{l.qty}</span><span>${l.lineTotal}</span></div>
+            <div className="summary-row" key={l.id}><span>{l.name} x{l.qty}</span><span>{formatRwf(l.lineTotal)}</span></div>
           ))}
-          <div className="summary-total"><span>Total</span><span>${total}</span></div>
+          <div className="summary-total"><span>Total</span><span>{formatRwf(total)}</span></div>
           <label style={{ marginTop: 16 }}>Deliver to</label>
           <div style={{ fontSize: 13, color: 'var(--muted)' }}>
             {buyer.name} · {buyer.phone}<br />{buyer.address}
@@ -118,7 +127,7 @@ export default function Checkout() {
             ))}
           </div>
           <div className="summary-total" style={{ marginTop: 16 }}>
-            <span>Total to pay</span><span>${total}</span>
+            <span>Total to pay</span><span>{formatRwf(total)}</span>
           </div>
           <button className="place-order" onClick={submitOrder} disabled={submitting}>
             {submitting ? 'Placing order…' : 'Place order'}
