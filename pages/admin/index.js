@@ -70,8 +70,9 @@ export default function AdminDashboard() {
       trending: product.trending, active: product.active,
     }).eq('id', product.id);
     setSavingId(null);
-    if (error) alert('Save failed: ' + error.message);
-    else alert('Saved!');
+        setSavingId(null);
+    if (error) { alert('Save failed: ' + error.message); return; }
+    setManagingProduct(null);
   };
 
   const deleteProduct = async (id) => {
