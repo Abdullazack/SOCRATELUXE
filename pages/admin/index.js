@@ -187,6 +187,7 @@ export default function AdminDashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1>Admin Dashboard</h1>
         <div>
+          <Link href="/admin/orders" style={{ marginRight: 16 }}>Orders</Link>
           <Link href="/admin/settings" style={{ marginRight: 16 }}>Black Friday Settings</Link>
           <button onClick={handleLogout}>Log out</button>
         </div>

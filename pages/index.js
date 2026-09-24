@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useCart } from '../lib/CartContext';
 import CartDrawer from '../components/CartDrawer';
 import Lightbox from '../components/Lightbox';
+import SocialPanel from '../components/SocialPanel';
 
 const colors = ['#b08d57', '#3a3a38', '#7c8471', '#9c4f4f', '#5a6e78', '#c2a66b', '#4b4238', '#8a7a68'];
 
@@ -114,7 +115,9 @@ export default function Home() {
       <footer>Socrateluxe — live catalog from Supabase</footer>
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} products={products} />
+        
       <Lightbox product={lightboxProduct} onClose={() => setLightboxProduct(null)} />
+          <SocialPanel />
     </>
   );
 }
