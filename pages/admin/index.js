@@ -18,6 +18,7 @@ export default function AdminDashboard() {
   const [managingProduct, setManagingProduct] = useState(null);
   const [newProduct, setNewProduct] = useState({ name: '', price: '', category: CATEGORIES[0], description: '' });
   const [addingNew, setAddingNew] = useState(false);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -177,41 +178,71 @@ export default function AdminDashboard() {
         </div>
 
         <div style={cardStyle}>
-          <h3 style={{ marginTop: 0 }}>Inventory ({products.length})</h3>
-          {loading ? <p>Loading…</p> : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {products.map((p) => {
-                const images = imagesByProduct[p.id] || [];
-                const thumb = images[0]?.url || p.image_url;
-                return (
-                  <div key={p.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
-                    borderBottom: '1px solid #eee', flexWrap: 'wrap',
-                  }}>
-                    {thumb ? (
-                      <img src={thumb} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ width: 44, height: 44, borderRadius: 6, background: '#eee' }} />
-                    )}
-                    <div style={{ flex: 1, minWidth: 140 }}>
-                      <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{p.name}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: '#5b6f6a' }}>{p.category}</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+            <h3 style={{ margin: 0 }}>Inventory ({products.length})</h3>
+            <input
+              placeholder="🔍 Search products…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ ...inputStyle, width: 220 }}
+            />
+          </div>
+          {loading ? <p>Loading…</p> : (() => {
+            const filtered = products.filter((p) =>
+              p.name.toLowerCase().includes(search.toLowerCase())
+            );
+            const grouped = {};
+            filtered.forEach((p) => {
+              if (!grouped[p.category]) grouped[p.category] = [];
+              grouped[p.category].push(p);
+            });
+            const categoryNames = Object.keys(grouped).sort();
+
+            if (filtered.length === 0) {
+              return <p style={{ color: '#5b6f6a', fontSize: 13 }}>No products match "{search}".</p>;
+            }
+
+            return categoryNames.map((cat) => (
+              <div key={cat} style={{ marginBottom: 18 }}>
+                <p style={{
+                  fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+                  color: '#152D35', background: '#D4ECDD', display: 'inline-block',
+                  padding: '3px 10px', borderRadius: 10, marginBottom: 6,
+                }}>
+                  {cat} ({grouped[cat].length})
+                </p>
+                {grouped[cat].map((p) => {
+                  const images = imagesByProduct[p.id] || [];
+                  const thumb = images[0]?.url || p.image_url;
+                  return (
+                    <div key={p.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
+                      borderBottom: '1px solid #eee', flexWrap: 'wrap',
+                    }}>
+                      {thumb ? (
+                        <img src={thumb} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: 44, height: 44, borderRadius: 6, background: '#eee' }} />
+                      )}
+                      <div style={{ flex: 1, minWidth: 140 }}>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{p.name}</p>
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 600, minWidth: 90 }}>{Number(p.price).toLocaleString()} Rwf</span>
+                      <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 10, background: p.active ? '#d7f0dd' : '#f5d7d7', color: p.active ? '#2f7a4d' : '#c0392b' }}>
+                        {p.active ? 'Active' : 'Hidden'}
+                      </span>
+                      {p.trending && <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 10, background: '#152D35', color: '#F3FF74' }}>Trending</span>}
+                      <span style={{ fontSize: 11, color: images.length >= 3 ? '#2f7a4d' : '#b45309' }}>{images.length} imgs</span>
+                      <button onClick={() => setManagingProduct(p)}
+                        style={{ padding: '6px 14px', background: '#152D35', color: '#fff', border: 'none', borderRadius: 16, fontSize: 12, cursor: 'pointer' }}>
+                        Manage
+                      </button>
                     </div>
-                    <span style={{ fontSize: 13, fontWeight: 600, minWidth: 90 }}>{Number(p.price).toLocaleString()} Rwf</span>
-                    <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 10, background: p.active ? '#d7f0dd' : '#f5d7d7', color: p.active ? '#2f7a4d' : '#c0392b' }}>
-                      {p.active ? 'Active' : 'Hidden'}
-                    </span>
-                    {p.trending && <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 10, background: '#152D35', color: '#F3FF74' }}>Trending</span>}
-                    <span style={{ fontSize: 11, color: images.length >= 3 ? '#2f7a4d' : '#b45309' }}>{images.length} imgs</span>
-                    <button onClick={() => setManagingProduct(p)}
-                      style={{ padding: '6px 14px', background: '#152D35', color: '#fff', border: 'none', borderRadius: 16, fontSize: 12, cursor: 'pointer' }}>
-                      Manage
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            ));
+          })()}
         </div>
       </div>
 

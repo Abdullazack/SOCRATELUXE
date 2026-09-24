@@ -81,5 +81,6 @@ input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px
 }
 
 @media (min-width: 1200px) {
-  .grid{max-width:1100px;}
+  .grid{max-width:1100px;}input[type="radio"], input[type="checkbox"]{width:auto;margin:0;flex-shrink:0;}
+.pay-opt{justify-content:flex-start;}
 }
