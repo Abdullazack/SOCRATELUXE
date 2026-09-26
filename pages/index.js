@@ -26,6 +26,10 @@ export default function Home() {
   const [social, setSocial] = useState({});
   const [showAllTrending, setShowAllTrending] = useState(false);
   const { cart, add } = useCart();
+    const router = useRouter();
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const { isComparing, toggleCompare, compareIds } = useCompare();
+  const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   useEffect(() => {
     supabase.from('products').select('*').eq('active', true).then(({ data, error }) => {
@@ -72,8 +76,29 @@ export default function Home() {
   const ProductCard = ({ p, i }) => {
     const images = imagesByProduct[p.id] || (p.image_url ? [p.image_url] : []);
     const { final, original } = priceFor(p);
+    const favorited = isFavorite(p.id);
+    const comparing = isComparing(p.id);
+
+    const buyNow = () => {
+      add(p);
+      router.push('/checkout');
+    };
+
     return (
-      <div className="card">
+      <div className={`card ${comparing ? 'comparing' : ''}`}>
+        <div className="card-hover-icons">
+          <button
+            className={`icon-btn ${favorited ? 'favorited' : ''}`}
+            onClick={() => toggleFavorite(p.id)}
+            title="Add to favorites"
+          >
+            {favorited ? '♥' : '♡'}
+          </button>
+          <button className="icon-btn" onClick={() => setQuickViewProduct({ ...p, images })} title="Quick view">
+            👁
+          </button>
+        </div>
+
         {images.length > 0 ? (
           <img
             src={images[0]} alt={p.name} className="card-image"
@@ -97,6 +122,11 @@ export default function Home() {
             )}
           </p>
           <button className="add" onClick={() => add(p)}>Add to cart</button>
+          <button className="buy-now" onClick={buyNow}>Buy now</button>
+          <label className="compare-row">
+            <input type="checkbox" checked={comparing} onChange={() => toggleCompare(p.id)} />
+            Compare
+          </label>
         </div>
       </div>
     );
