@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabaseClient';
+import AdminNav from '../../components/AdminNav';
 
 const CATEGORIES = ['clothes', 'shoes', 'gents-accessories', 'ladies-accessories'];
 
@@ -146,15 +147,7 @@ export default function AdminDashboard() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#D4ECDD' }}>
-      <div style={{ background: '#152D35', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        <h1 style={{ color: '#fff', margin: 0, fontSize: 18, letterSpacing: 1 }}>SOCRATELUXE <span style={{ color: '#F3FF74', fontWeight: 400, fontSize: 13 }}>· Admin</span></h1>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <a href="/" style={navBtn}>← View Shop</a>
-          <Link href="/admin/orders" style={navBtn}>Orders</Link>
-          <Link href="/admin/settings" style={navBtn}>Settings</Link>
-          <button onClick={handleLogout} style={{ ...navBtn, background: '#F3FF74', color: '#152D35', fontWeight: 700, border: 'none' }}>Log out</button>
-        </div>
-      </div>
+            <AdminNav active="products" />
 
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: 24 }}>
         <div style={{ ...cardStyle, marginBottom: 24 }}>

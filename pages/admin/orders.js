@@ -63,7 +63,7 @@ export default function AdminOrders() {
     <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1>Orders</h1>
-        <Link href="/admin">← Back to dashboard</Link>
+        <AdminNav active="orders" />
       </div>
 
       {loading ? <p>Loading…</p> : orders.length === 0 ? (

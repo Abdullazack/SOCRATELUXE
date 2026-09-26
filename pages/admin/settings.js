@@ -85,7 +85,7 @@ export default function AdminSettings() {
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: 24 }}>
-      <Link href="/admin">← Back to dashboard</Link>
+      <AdminNav active="settings" />
       <h1>Site Settings</h1>
 
       <div style={cardStyle}>
