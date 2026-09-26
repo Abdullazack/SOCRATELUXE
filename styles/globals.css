@@ -1,3 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 142 39% 88%;
+    --foreground: 195 43% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 195 43% 15%;
+    --primary: 65 100% 73%;
+    --primary-foreground: 195 43% 15%;
+    --secondary: 195 43% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --accent: 142 39% 88%;
+    --accent-foreground: 195 43% 15%;
+    --muted: 142 20% 94%;
+    --muted-foreground: 195 15% 40%;
+    --border: 40 20% 89%;
+    --input: 40 20% 89%;
+    --ring: 65 100% 73%;
+    --radius: 0.9rem;
+  }
+}
 :root{
   --bg:#D4ECDD;--card:#fff;--ink:#152D35;--muted:#4a615c;--accent2:#D4ECDD;--line:#c3ddd3;
   --lemon:#F3FF74;--gradient: linear-gradient(120deg, #152D35 0%, #244a52 45%, #D4ECDD 100%);
